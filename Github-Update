@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # 切换到 Github 目录
-cd ~/Github || { echo "错误: 找不到 ~/Github 目录"; exit 1; }
+cd ~/.Github || { echo "错误: 找不到 ~/.Github 目录"; exit 1; }
 
 # 获取所有子目录（项目）
 projects=(*/)
 if [ ${#projects[@]} -eq 0 ]; then
-    echo "错误: ~/Github 目录下没有找到任何项目。"
+    echo "错误: ~/.Github 目录下没有找到任何项目。"
     exit 1
 fi
 
