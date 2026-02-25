@@ -1,0 +1,66 @@
+#!/bin/bash
+
+# 切换到 Github 目录
+cd ~/Github || { echo "错误: 找不到 ~/Github 目录"; exit 1; }
+
+# 获取所有子目录（项目）
+projects=(*/)
+if [ ${#projects[@]} -eq 0 ]; then
+    echo "错误: ~/Github 目录下没有找到任何项目。"
+    exit 1
+fi
+
+# 提示用户选择项目
+echo "请选择要更新的项目:"
+select project in "${projects[@]}"; do
+    if [ -n "$project" ]; then
+        # 去除末尾的斜杠并进入目录
+        project_dir="${project%/}"
+        cd "$project_dir" || { echo "错误: 无法进入目录 $project_dir"; exit 1; }
+        echo "已进入项目: $project_dir"
+        break
+    else
+        echo "无效的选择，请重试。"
+    fi
+done
+
+# 检查是否在 Git 仓库中
+if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+    echo "错误: 当前目录不是一个 Git 仓库。"
+    exit 1
+fi
+
+# 获取当前分支名
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+# 检查是否有未提交的更改
+if [ -z "$(git status --porcelain)" ]; then
+    echo "没有需要提交的更改。"
+    exit 0
+fi
+
+# 提示输入提交信息
+echo "请输入提交信息 (直接回车将使用默认信息 'Update configurations'):"
+read -r COMMIT_MSG
+
+# 如果没有输入，使用默认信息
+if [ -z "$COMMIT_MSG" ]; then
+    COMMIT_MSG="Update configurations"
+fi
+
+# 添加所有更改
+echo "正在添加更改..."
+git add .
+
+# 提交更改
+echo "正在提交更改..."
+git commit -m "$COMMIT_MSG"
+
+# 推送到远程仓库
+echo "正在推送到 GitHub ($BRANCH 分支)..."
+if git push origin "$BRANCH"; then
+    echo "✅ 成功更新到 GitHub!"
+else
+    echo "❌ 推送失败。请检查网络连接或解决冲突后重试。"
+    exit 1
+fi
