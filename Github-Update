@@ -3,6 +3,18 @@
 # 切换到 Github 目录
 cd ~/.Github || { echo "错误: 找不到 ~/.Github 目录"; exit 1; }
 
+# 提前执行：遍历所有项目，自动将远程仓库地址从 HTTPS 切换为 SSH
+for dir in */; do
+    if [ -d "$dir" ] && git -C "$dir" rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+        REMOTE_URL=$(git -C "$dir" remote get-url origin 2>/dev/null)
+        if [[ "$REMOTE_URL" == https://github.com/* ]]; then
+            SSH_URL="${REMOTE_URL/https:\/\/github.com\//git@github.com:}"
+            echo "项目 [$dir]: 检测到 HTTPS 链接，已预先自动转换为 SSH链接"
+            git -C "$dir" remote set-url origin "$SSH_URL"
+        fi
+    fi
+done
+
 # 获取所有子目录（项目）
 projects=(*/)
 if [ ${#projects[@]} -eq 0 ]; then
@@ -12,10 +24,11 @@ fi
 
 # 提示用户选择项目
 echo "请选择要更新的项目:"
-select project in "${projects[@]}"; do
+OLD_COLUMNS=$COLUMNS
+COLUMNS=1
+select project in "${projects[@]%/}"; do
     if [ -n "$project" ]; then
-        # 去除末尾的斜杠并进入目录
-        project_dir="${project%/}"
+        project_dir="$project"
         cd "$project_dir" || { echo "错误: 无法进入目录 $project_dir"; exit 1; }
         echo "已进入项目: $project_dir"
         break
@@ -23,19 +36,12 @@ select project in "${projects[@]}"; do
         echo "无效的选择，请重试。"
     fi
 done
+COLUMNS=$OLD_COLUMNS
 
 # 检查是否在 Git 仓库中
 if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
     echo "错误: 当前目录不是一个 Git 仓库。"
     exit 1
-fi
-
-# 自动将远程仓库地址从 HTTPS 切换为 SSH
-REMOTE_URL=$(git remote get-url origin 2>/dev/null)
-if [[ "$REMOTE_URL" == https://github.com/* ]]; then
-    SSH_URL="${REMOTE_URL/https:\/\/github.com\//git@github.com:}"
-    echo "检测到 HTTPS 远程链接，自动转换为 SSH链接: $SSH_URL"
-    git remote set-url origin "$SSH_URL"
 fi
 
 # 获取当前分支名
