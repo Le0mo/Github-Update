@@ -1,0 +1,46 @@
+#!/bin/bash
+
+# 切换到 Github 目录
+cd ~/.Github || { echo "错误: 找不到 ~/.Github 目录"; exit 1; }
+
+# 获取所有子目录（项目）
+projects=(*/)
+if [ ${#projects[@]} -eq 0 ]; then
+    echo "错误: ~/.Github 目录下没有找到任何项目。"
+    exit 1
+fi
+
+# 提示用户选择项目
+echo "请选择要拉取(Pull)的项目:"
+OLD_COLUMNS=$COLUMNS
+COLUMNS=1
+select project in "${projects[@]%/}"; do
+    if [ -n "$project" ]; then
+        project_dir="$project"
+        cd "$project_dir" || { echo "错误: 无法进入目录 $project_dir"; exit 1; }
+        echo "已进入项目: $project_dir"
+        break
+    else
+        echo "无效的选择，请重试。"
+    fi
+done
+COLUMNS=$OLD_COLUMNS
+
+# 检查是否在 Git 仓库中
+if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+    echo "错误: 当前目录不是一个 Git 仓库。"
+    exit 1
+fi
+
+# 获取当前分支名
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+# 尝试拉取远程更新
+echo "正在从 GitHub 获取 $BRANCH 分支的更新..."
+
+if git pull origin "$BRANCH"; then
+    echo "✅ $project_dir 成功下拉更新!"
+else
+    echo "❌ 拉取失败。可能是网络问题或存在合并冲突，请手动检查 git status。"
+    exit 1
+fi
